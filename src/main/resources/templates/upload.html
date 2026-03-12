@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>ExamNest | Upload Notes</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+	<link rel="stylesheet" href="/css/theme.css">
+    <style>
+        .drop-zone {
+            border: 2px dashed #0d6efd;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background-color: #f8f9fa;
+        }
+        .drop-zone.dragover { background-color: #e9f3ff; border-color: #0a58ca; }
+        .dark-mode .drop-zone { background-color: #1e1e1e; border-color: #444; }
+    </style>
+</head>
+
+<body>
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow p-4">
+                <h4 class="mb-4 text-primary">📤 Upload Study Material</h4>
+
+                <form action="/upload" method="post" enctype="multipart/form-data">
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-bold">Note Title</label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. Unit 1 Handwritten Notes" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+						    <label class="form-label fw-bold">Year</label>
+						    <select name="year" class="form-select" required>
+						        <option value="">Select Year</option>
+						        <option value="1">1st Year</option>
+						        <option value="2">2nd Year</option>
+						        <option value="3">3rd Year</option>
+						        <option value="4">4th Year</option>
+						    </select>
+						</div>
+						
+						<div class="col-md-6 mb-3">
+						    <label class="form-label fw-bold">Branch</label>
+						    <select name="branch" class="form-select" required>
+						        <option value="">Select Branch</option>
+						        <option value="CSE">CSE</option>
+						        <option value="ECE">ECE</option>
+						        <option value="IT">IT</option>
+						        <option value="CIVIL">CIVIL</option>
+						        <option value="MECH">MECH</option>
+						    </select>
+						</div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Subject Name</label>
+                            <select name="subject" id="subject" class="form-select" required>
+							    <option value="">Select Subject</option>
+							</select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Upload File (PDF, DOCX, PPT)</label>
+                        <div id="drop-area" class="drop-zone">
+                            <p class="mb-1">Drag & Drop file here</p>
+                            <p class="text-muted small">OR</p>
+                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                    onclick="document.getElementById('fileInput').click()">
+                                Browse Files
+                            </button>
+                            <input type="file" id="fileInput" name="file" hidden required>
+                            <p id="fileName" class="mt-2 text-success fw-bold"></p>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Confirm & Upload</button>
+                        <a href="/dashboard" class="btn btn-light">Cancel</a>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="successToast" class="toast align-items-center text-bg-success border-0">
+        <div class="d-flex"><div class="toast-body" id="successMessage"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+    </div>
+    <div id="errorToast" class="toast align-items-center text-bg-danger border-0">
+        <div class="d-flex"><div class="toast-body" id="errorMessage"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+    </div>
+</div>
+
+<script>
+// Keep your existing script for Drag & Drop and Validation
+const dropArea = document.getElementById("drop-area");
+const fileInput = document.getElementById("fileInput");
+const fileName = document.getElementById("fileName");
+const MAX_SIZE = 10 * 1024 * 1024;
+
+function showError(message) {
+    document.getElementById("errorMessage").textContent = message;
+    new bootstrap.Toast(document.getElementById("errorToast")).show();
+}
+
+dropArea.addEventListener("click", () => fileInput.click());
+dropArea.addEventListener("dragover", (e) => { e.preventDefault(); dropArea.classList.add("dragover"); });
+dropArea.addEventListener("dragleave", () => { dropArea.classList.remove("dragover"); });
+dropArea.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropArea.classList.remove("dragover");
+    const file = e.dataTransfer.files[0];
+    if (file.size > MAX_SIZE) { showError("File size must be less than 10MB!"); return; }
+    fileInput.files = e.dataTransfer.files;
+    fileName.textContent = "Selected: " + file.name;
+});
+
+fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (file.size > MAX_SIZE) { showError("File size must be less than 10MB!"); fileInput.value = ""; fileName.textContent = ""; return; }
+    fileName.textContent = "Selected: " + file.name;
+});
+</script>
+
+<script th:if="${error}">
+    document.addEventListener("DOMContentLoaded", function() { showError("[[${error}]]"); });
+</script>
+
+<script>
+const subjectsData = {
+    "1-CSE": ["Maths 1", "Chemistry", "C Programming"],
+    "2-CSE": ["Java", "DBMS", "OS"],
+    "3-CSE": ["CN", "ML", "Cloud"],
+    "4-CSE": ["AI", "Project"],
+
+    "1-ECE": ["Physics", "Maths", "Basic Electronics"],
+    "2-ECE": ["Signals", "Networks"],
+    
+    "1-IT": ["Computer Programming","BCME","Chemistry","English","Maths-1,Physics","BEEE","Data Structures","Maths-2"],
+    "2-IT": ["DLCO","Java","UHV","DBMS","OS","P&S","SE"],
+    "3-IT": ["Advanced Java","ATCD","Machine Learning","Computer Networks","CNS"],
+    "4-IT": ["Internship","Project"],
+    
+};
+
+const yearSelect = document.querySelector("select[name='year']");
+const branchSelect = document.querySelector("select[name='branch']");
+const subjectSelect = document.getElementById("subject");
+
+function loadSubjects() {
+
+    const year = yearSelect.value;
+    const branch = branchSelect.value;
+
+    subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+
+    const key = year + "-" + branch;
+
+    if (subjectsData[key]) {
+
+        subjectsData[key].forEach(function (sub) {
+
+            const option = document.createElement("option");
+            option.value = sub;
+            option.textContent = sub;
+            subjectSelect.appendChild(option);
+        });
+    }
+}
+
+yearSelect.addEventListener("change", loadSubjects);
+branchSelect.addEventListener("change", loadSubjects);
+</script>
+<script src="/js/theme.js"></script>
+</body>
+</html>

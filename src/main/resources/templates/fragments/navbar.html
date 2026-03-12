@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="navbar">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+
+    <!-- Brand -->
+    <a class="navbar-brand" href="/">ExamNest</a>
+
+    <!-- Hamburger -->
+    <button class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarNav"
+            aria-controls="navbarNav"
+            aria-expanded="false"
+            aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+
+        <!-- Dark Mode -->
+        <li class="nav-item">
+          <button onclick="toggleDarkMode()"
+                  class="btn btn-outline-light btn-sm me-2">
+            🌙
+          </button>
+        </li>
+
+        <!-- Admin Panel -->
+        <li class="nav-item"
+            th:if="${session.loggedUser != null and session.loggedUser.role == 'ROLE_ADMIN'}">
+          <a class="nav-link" href="/admin">Admin Panel</a>
+        </li>
+
+        <!-- User Dropdown -->
+        <li class="nav-item dropdown"
+            th:if="${session.loggedUser != null}">
+
+          <a class="nav-link dropdown-toggle"
+             href="#"
+             id="userDropdown"
+             role="button"
+             data-bs-toggle="dropdown"
+             aria-expanded="false">
+
+            <span th:text="${session.loggedUser.username}">User</span>
+          </a>
+
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <a class="dropdown-item" href="/profile">Profile</a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="/logout">Logout</a>
+            </li>
+          </ul>
+        </li>
+
+      </ul>
+    </div>
+
+  </div>
+</nav>
+
+</div>
+
+</body>
+</html>

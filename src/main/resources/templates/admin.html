@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>ExamNest | Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/css/theme.css">
+    <style>
+        .card { border: none; transition: 0.3s; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+        .stats-icon { font-size: 2rem; opacity: 0.3; }
+    </style>
+</head>
+
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark px-3 d-flex justify-content-between">
+    <span class="navbar-brand fw-bold">🚀 ExamNest Admin</span>
+    <div class="d-flex align-items-center gap-3">
+        <button onclick="toggleDarkMode()" class="btn btn-outline-light btn-sm">🌙</button>
+        
+        <div class="position-relative">
+    <button class="btn btn-outline-light btn-sm" onclick="toggleNotifications()">🔔
+        <span id="notificationCount"
+              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+              style="display:none;"></span>
+    </button>
+
+    <div id="notificationBox"
+         class="card shadow position-absolute mt-2"
+         style="width:300px; right:0; display:none; z-index:1000;">
+        <ul id="notificationList"
+            class="list-group list-group-flush small"></ul>
+    </div>
+</div>
+        <a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 text-center border-start border-primary border-4">
+                <h6 class="text-muted">Total Users</h6>
+                <h3 th:text="${totalUsers}">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 text-center border-start border-success border-4">
+                <h6 class="text-muted">Total Notes</h6>
+                <h3 th:text="${totalNotes}">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 text-center border-start border-warning border-4">
+                <h6 class="text-muted">Admins / Users</h6>
+                <h3><span th:text="${totalAdmins}">0</span> / <span th:text="${totalNormalUsers}">0</span></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 text-center border-start border-danger border-4">
+                <h6 class="text-muted">Storage Used</h6>
+                <h3 th:text="${#numbers.formatDecimal(totalStorage / 1024 / 1024, 1, 2)} + ' MB'"></h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm p-3"><canvas id="userGrowthChart" height="250"></canvas></div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm p-3"><canvas id="notesDownloadChart" height="250"></canvas></div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold">👥 User Management</h5>
+            <form method="get" action="/admin" class="d-flex gap-2">
+                <input type="text" name="keyword" class="form-control form-control-sm" placeholder="Search user..." th:value="${keyword}">
+                <button type="submit" class="btn btn-primary btn-sm">Search</button>
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th><th>Username</th><th>Role</th><th>Status</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="u, stat : ${users}">
+                    <td th:text="${currentPage * 5 + stat.index + 1}"></td>
+                    <td><a th:href="@{'/admin/user/' + ${u.id}}" class="fw-bold" th:text="${u.username}"></a></td>
+                    <td th:text="${u.role}"></td>
+                    <td><span th:class="${u.accountLocked ? 'badge bg-danger' : 'badge bg-success'}" th:text="${u.accountLocked ? 'Locked' : 'Active'}"></span></td>
+                    <td>
+                        <div class="btn-group">
+                            <a th:if="${u.id != session.loggedUser.id}" th:href="@{'/admin/change-role/' + ${u.id}}" class="btn btn-sm btn-warning">Role</a>
+                            <a th:if="${u.role != 'ROLE_ADMIN'}" th:href="@{'/admin/delete-user/' + ${u.id}}" class="btn btn-sm btn-danger" onclick="return confirm('Delete?')">Del</a>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="mt-3 text-center">
+            <a th:if="${currentPage > 0}" th:href="@{'/admin?page=' + ${currentPage - 1}}" class="btn btn-sm btn-outline-secondary">Prev</a>
+            <span class="mx-2 small">Page [[${currentPage + 1}]] of [[${totalPages}]]</span>
+            <a th:if="${currentPage + 1 < totalPages}" th:href="@{'/admin?page=' + ${currentPage + 1}}" class="btn btn-sm btn-outline-secondary">Next</a>
+        </div>
+    </div>
+
+    <div class="row mt-4 mb-4">
+        <div class="col-md-8">
+            <div class="card shadow-sm p-4">
+                <h5 class="fw-bold mb-3">🏆 Top 5 Users (Leaderboard)</h5>
+                <table class="table table-sm text-center">
+                    <thead><tr><th>Rank</th><th>Username</th><th>Downloads</th></tr></thead>
+                    <tbody id="leaderboardBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm p-4">
+                <h5 class="fw-bold">📊 Reports</h5>
+                <div class="d-grid gap-2">
+                    <a href="/admin/export-users" class="btn btn-success btn-sm">Export Users CSV</a>
+                    <a href="/admin/export-logs" class="btn btn-primary btn-sm">Export Activity Logs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+	
+	<div class="card shadow-sm p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold">📚 All Notes Management</h5>
+
+        <!-- 🔎 Search Form -->
+        <form method="get" action="/admin" class="d-flex gap-2">
+            <input type="text"
+                   name="noteKeyword"
+                   class="form-control form-control-sm"
+                   placeholder="Search notes..."
+                   th:value="${noteKeyword}">
+            <button type="submit" class="btn btn-success btn-sm">Search</button>
+        </form>
+    </div>
+
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>User</th>
+            <th>Semester</th>
+            <th>Subject</th>
+            <th>Downloads</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="note, stat : ${allNotes}">
+            <td th:text="${notesCurrentPage * 5 + stat.index + 1}"></td>
+            <td th:text="${note.title}"></td>
+            <td th:text="${note.user.username}"></td>
+            <td th:text="${note.semester}"></td>
+            <td th:text="${note.subject}"></td>
+            <td th:text="${note.downloadCount}"></td>
+
+            <td>
+                <a th:href="@{'/download/' + ${note.id}}"
+                   class="btn btn-sm btn-primary">Download</a>
+
+                <a th:href="@{'/delete/' + ${note.id}}"
+                   class="btn btn-sm btn-danger"
+                   onclick="return confirm('Delete this note?')">Delete</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- 🔁 Pagination -->
+    <div class="mt-3 text-center">
+        <a th:if="${notesCurrentPage > 0}"
+           th:href="@{'/admin?notePage=' + ${notesCurrentPage - 1}}"
+           class="btn btn-sm btn-outline-secondary">Prev</a>
+
+        <span class="mx-2 small">
+            Page [[${notesCurrentPage + 1}]] of [[${notesTotalPages}]]
+        </span>
+
+        <a th:if="${notesCurrentPage + 1 < notesTotalPages}"
+           th:href="@{'/admin?notePage=' + ${notesCurrentPage + 1}}"
+           class="btn btn-sm btn-outline-secondary">Next</a>
+    </div>
+</div>
+	
+    <div class="card shadow-sm p-4 mt-4 mb-5">
+        <h5 class="fw-bold">📜 Recent Logs</h5>
+        <table class="table table-sm small mt-2">
+            <tr><th>User</th><th>Action</th><th>Timestamp</th></tr>
+            <tr th:each="log : ${recentLogs}">
+                <td th:text="${log.username}"></td>
+                <td th:text="${log.action}"></td>
+                <td th:text="${#temporals.format(log.timestamp, 'dd-MM-yyyy HH:mm')}"></td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+
+<script>
+let charts = {};
+
+function drawChart(canvasId, type, labels, data, title, color) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    charts[canvasId] = new Chart(ctx, {
+        type: type,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: title,
+                data: data,
+                backgroundColor: color,
+                borderColor: color,
+                tension: 0.3,
+                fill: type === 'line'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+
+    // ✅ User Growth Chart
+    fetch('/admin/user-growth')
+        .then(res => res.json())
+        .then(data => {
+            drawChart(
+                'userGrowthChart',
+                'line',
+                data.map(i => i[0]),
+                data.map(i => i[1]),
+                'Users Joined',
+                '#0d6efd'
+            );
+        });
+
+    // ✅ Monthly Downloads Chart (IMPORTANT FIX)
+    fetch('/admin/monthly-downloads')
+        .then(res => res.json())
+        .then(data => {
+            drawChart(
+                'notesDownloadChart',   // 🔥 ID FIXED HERE
+                'bar',
+                data.map(i => i[0]),
+                data.map(i => i[1]),
+                'Monthly Downloads',
+                '#198754'
+            );
+        });
+
+});
+</script>
+
+<script>
+fetch('/admin/top-users')
+    .then(res => res.json())
+    .then(data => {
+        const tbody = document.getElementById("leaderboardBody");
+        tbody.innerHTML = "";
+
+        data.forEach((u, i) => {
+            let rank = (i === 0) ? "🥇" :
+                       (i === 1) ? "🥈" :
+                       (i === 2) ? "🥉" : (i+1);
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${rank}</td>
+                    <td>${u[0]}</td>
+                    <td>${u[1]}</td>
+                </tr>`;
+        });
+    });
+</script>
+
+<script>
+function loadNotifications() {
+    fetch('/admin/notifications')
+        .then(res => res.json())
+        .then(data => {
+
+            const countBadge = document.getElementById("notificationCount");
+            const list = document.getElementById("notificationList");
+
+            list.innerHTML = "";
+
+            if (data.length > 0) {
+                countBadge.style.display = "inline-block";
+                countBadge.innerText = data.length;
+
+                data.forEach(n => {
+                    list.innerHTML += `
+                        <li class="list-group-item">
+                            ${n.message}
+                            <br>
+                            <small class="text-muted">
+                                ${new Date(n.createdAt).toLocaleString()}
+                            </small>
+                        </li>`;
+                });
+
+            } else {
+                countBadge.style.display = "none";
+                list.innerHTML = `
+                    <li class="list-group-item text-center text-muted">
+                        No notifications
+                    </li>`;
+            }
+        });
+}
+
+function toggleNotifications() {
+
+    const box = document.getElementById("notificationBox");
+
+    if (box.style.display === "none") {
+
+        loadNotifications();
+        box.style.display = "block";
+
+        // 🔥 MARK AS READ
+        fetch('/admin/notifications/read', {
+            method: 'POST'
+        }).then(() => {
+            document.getElementById("notificationCount").style.display = "none";
+        });
+
+    } else {
+        box.style.display = "none";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadNotifications);
+</script>
+
+<script src="/js/theme.js"></script>
+</body>
+</html>

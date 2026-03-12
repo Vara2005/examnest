@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>ExamNest | Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/theme.css">
+    <style>
+        .card-hover { transition: 0.2s; cursor: pointer; }
+        .card-hover:hover { transform: scale(1.05); }
+    </style>
+</head>
+
+<body class="bg-light">
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4>Welcome, <span th:text="${username}" class="text-primary"></span> 🎉</h4>
+        <a href="/upload" class="btn btn-primary">+ Upload New Notes</a>
+    </div>
+
+    <!-- ================= YEAR SELECTION ================= -->
+
+    <div th:if="${selectedYear == null}">
+        <h3>Select Your Year</h3>
+
+        <div class="row text-center mt-4">
+            <div class="col-md-3 mb-4" th:each="yr : ${ {'1','2','3','4'} }">
+                <a th:href="@{/dashboard(year=${yr})}" class="text-decoration-none">
+                    <div class="card shadow-sm border-primary card-hover">
+                        <div class="card-body py-4">
+                            <h2 class="text-primary" th:text="${yr + ' Year'}"></h2>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= BRANCH SELECTION ================= -->
+
+    <div th:if="${selectedYear != null and selectedBranch == null}">
+        <a href="/dashboard" class="btn btn-outline-secondary mb-3">← Back to Years</a>
+
+        <h3>Select Branch for Year <span th:text="${selectedYear}"></span></h3>
+
+        <div class="row text-center mt-4">
+            <div class="col-md-3 mb-3" th:each="br : ${ {'CSE','ECE','IT','CIVIL','MECH'} }">
+                <a th:href="@{/dashboard(year=${selectedYear}, branch=${br})}" class="text-decoration-none">
+                    <div class="card shadow-sm border-success card-hover p-3">
+                        <h5 th:text="${br}"></h5>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= NOTES DISPLAY ================= -->
+
+    <div th:if="${selectedYear != null and selectedBranch != null}">
+
+        <a th:href="@{/dashboard(year=${selectedYear})}" class="btn btn-outline-secondary mb-3">
+            ← Back to Branches
+        </a>
+
+        <div class="card shadow p-4">
+            <h3>
+                Notes for Year [[${selectedYear}]] - [[${selectedBranch}]]
+            </h3>
+
+            <table class="table table-bordered table-hover mt-4 text-center">
+                <thead class="table-dark">
+                <tr>
+                    <th>Subject</th>
+                    <th>Title</th>
+                    <th>Downloads</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr th:each="note : ${notes}">
+                    <td th:text="${note.subject}"></td>
+                    <td th:text="${note.title}"></td>
+                    <td th:text="${note.downloadCount}"></td>
+                    <td>
+					    <div class="btn-group">
+					
+					        <!-- Download (Everyone) -->
+					        <a th:href="@{'/download/' + ${note.id}}"
+					           class="btn btn-success btn-sm">
+					            Download
+					        </a>
+					
+					        <!-- Edit & Delete (Only Owner) -->
+					        <th:block th:if="${session.loggedUser.id == note.user.id}">
+					            <a th:href="@{'/edit/' + ${note.id}}"
+					               class="btn btn-warning btn-sm">
+					                Edit
+					            </a>
+					
+					            <a th:href="@{'/delete/' + ${note.id}}"
+					               class="btn btn-danger btn-sm"
+					               onclick="return confirm('Delete this file?')">
+					                Delete
+					            </a>
+					        </th:block>
+					
+					    </div>
+					</td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(notes)}">
+                    <td colspan="4" class="text-muted">
+                        No notes uploaded for this branch yet.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script src="/js/theme.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
